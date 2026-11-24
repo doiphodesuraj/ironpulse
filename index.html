@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-black">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="IronPulse">
+  <meta name="theme-color" content="#0A0A0C">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='128' fill='%230A0A0C'/%3E%3Ccircle cx='256' cy='256' r='180' fill='%2318181B' stroke='%233B82F6' stroke-width='16'/%3E%3Cpath d='M160 256h192M190 200v112M322 200v112' stroke='%233B82F6' stroke-width='28' stroke-linecap='round'/%3E%3C/svg%3E">
+  <title>IronPulse - Workout Tracker</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    :root {
+      --sat: env(safe-area-inset-top, 0px);
+      --sab: env(safe-area-inset-bottom, 0px);
+    }
+    body {
+      background-color: #0A0A0C;
+      color: #F4F4F5;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, sans-serif;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .safe-top { padding-top: max(16px, env(safe-area-inset-top)); }
+    .safe-bottom { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+    .tabbar-padding { padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+    .custom-scroll::-webkit-scrollbar { display: none; }
+    .custom-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="h-full flex flex-col text-zinc-100 overflow-hidden select-none">
+
+  <!-- Top App Bar -->
+  <header class="safe-top px-5 pb-3 bg-[#0A0A0C]/90 backdrop-blur-md border-b border-[#27272A] flex items-center justify-between z-20">
+    <div>
+      <h1 class="text-xl font-black text-white tracking-tight flex items-center gap-1.5">
+        <span class="text-blue-500">⚡</span> IronPulse
+      </h1>
+      <p class="text-[11px] text-zinc-400 font-medium">Gym-Floor Workout Tracker</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="toggleWeightUnit()" id="unitToggleBtn" class="px-2.5 py-1 text-xs font-bold font-mono rounded-lg bg-[#18181B] border border-[#27272A] text-blue-400 active:scale-95 transition-transform">
+        LBS
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Scrollable Screen Content -->
+  <main id="appContainer" class="flex-1 overflow-y-auto custom-scroll tabbar-padding p-4 relative">
+    <!-- Screen Views rendered here -->
+  </main>
+
+  <!-- Floating Active Workout Bar (Minimizable Hevy-style) -->
+  <div id="floatingActiveBar" class="hidden fixed bottom-[calc(68px+env(safe-area-inset-bottom,0px))] left-3 right-3 bg-[#18181B] border border-blue-500/50 rounded-2xl p-3 shadow-2xl z-30 cursor-pointer active:scale-[0.99] transition-all">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="relative flex items-center justify-center">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+          <span class="absolute w-4 h-4 rounded-full bg-emerald-400/40 animate-ping"></span>
+        </div>
+        <div>
+          <div id="floatingWorkoutTitle" class="text-xs font-bold text-white">Push Day</div>
+          <div class="flex items-center gap-2 text-[11px] text-zinc-400">
+            <span id="floatingWorkoutTimer" class="font-mono text-blue-400 font-bold">00:00</span>
+            <span id="floatingRestTimerLabel" class="hidden text-amber-400 font-mono flex items-center gap-1 font-bold">
+              • Rest: <span id="floatingRestSecs">90s</span>
+            </span>
+          </div>
+        </div>
+      </div>
+      <button onclick="maximizeActiveWorkout()" class="px-3 py-1 bg-blue-500/15 text-blue-400 text-xs font-bold rounded-full border border-blue-500/30">
+        Resume ↗
+      </button>
+    </div>
+  </div>
+
+  <!-- Rest Timer Floating Overlay (During Active Workout) -->
+  <div id="restTimerOverlay" class="hidden fixed bottom-6 left-3 right-3 bg-[#18181B] border border-amber-500/50 rounded-2xl p-3 shadow-2xl z-50">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="relative w-8 h-8 flex items-center justify-center">
+          <svg class="w-8 h-8 -rotate-90" viewBox="0 0 36 36">
+            <path class="text-zinc-700" stroke-width="3.5" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path id="restCircleProgress" class="text-amber-400" stroke-width="3.5" stroke-dasharray="100, 100" stroke-linecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+          </svg>
+          <span class="absolute text-[10px] text-amber-400 font-bold">⏱</span>
+        </div>
+        <div>
+          <div class="text-[9px] uppercase font-bold text-zinc-400">Rest Timer</div>
+          <div id="restCountdownText" class="text-base font-bold font-mono text-white">01:30</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <button onclick="adjustRestTimer(-15)" class="px-2.5 py-1 text-xs font-bold bg-[#27272A] active:bg-[#3F3F46] text-zinc-200 rounded-lg">-15s</button>
+        <button onclick="adjustRestTimer(15)" class="px-2.5 py-1 text-xs font-bold bg-[#27272A] active:bg-[#3F3F46] text-zinc-200 rounded-lg">+15s</button>
+        <button onclick="skipRestTimer()" class="p-1.5 bg-[#27272A] text-zinc-400 active:text-rose-400 rounded-lg">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom 4-Tab Navigation Bar -->
+  <nav class="fixed bottom-0 left-0 right-0 bg-[#0A0A0C]/95 backdrop-blur-md border-t border-[#27272A] flex items-center justify-around px-2 z-20 safe-bottom h-[64px]">
+    <button onclick="switchTab('workout')" id="nav-workout" class="flex flex-col items-center gap-0.5 text-blue-500 flex-1 py-1">
+      <span class="text-xl">🏋️‍♂️</span>
+      <span class="text-[10px] font-bold">Workout</span>
+    </button>
+    <button onclick="switchTab('history')" id="nav-history" class="flex flex-col items-center gap-0.5 text-zinc-500 flex-1 py-1">
+      <span class="text-xl">🕒</span>
+      <span class="text-[10px] font-bold">History</span>
+    </button>
+    <button onclick="switchTab('exercises')" id="nav-exercises" class="flex flex-col items-center gap-0.5 text-zinc-500 flex-1 py-1">
+      <span class="text-xl">📖</span>
+      <span class="text-[10px] font-bold">Exercises</span>
+    </button>
+    <button onclick="switchTab('progress')" id="nav-progress" class="flex flex-col items-center gap-0.5 text-zinc-500 flex-1 py-1">
+      <span class="text-xl">📈</span>
+      <span class="text-[10px] font-bold">Progress</span>
+    </button>
+  </nav>
+
+  <!-- Full-Screen Active Workout Logger Modal -->
+  <div id="activeWorkoutModal" class="hidden fixed inset-0 bg-[#0A0A0C] z-40 flex flex-col safe-top overflow-hidden">
+    <!-- Active Header -->
+    <div class="flex items-center justify-between px-4 py-3 border-b border-[#27272A] bg-[#0D0D10]">
+      <button onclick="minimizeActiveWorkout()" class="p-2 text-zinc-400 active:text-white">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+      </button>
+      <div class="text-center">
+        <h2 id="activeModalTitle" class="text-sm font-bold text-white">Push Day</h2>
+        <span id="activeModalDuration" class="font-mono text-xs text-blue-400 font-bold">00:00:00</span>
+      </div>
+      <button onclick="finishActiveWorkout()" class="px-4 py-1.5 bg-emerald-500 active:bg-emerald-400 text-black text-xs font-black rounded-full uppercase tracking-wider shadow-lg shadow-emerald-500/20">
+        Finish
+      </button>
+    </div>
+
+    <!-- Active Sets Scroll Body -->
+    <div id="activeWorkoutBody" class="flex-1 overflow-y-auto custom-scroll p-4 space-y-4 pb-32">
+      <!-- Exercise cards rendered here -->
+    </div>
+  </div>
+
+  <!-- Finish Workout Summary Celebration Modal -->
+  <div id="summaryModal" class="hidden fixed inset-0 bg-[#0A0A0C] z-50 flex flex-col p-6 safe-top safe-bottom overflow-y-auto custom-scroll">
+    <div class="flex flex-col items-center text-center mt-4 space-y-2">
+      <div class="w-20 h-20 rounded-full bg-amber-400/15 border-2 border-amber-400 flex items-center justify-center text-4xl shadow-xl shadow-amber-400/20">
+        🏆
+      </div>
+      <h2 class="text-2xl font-black text-white">Workout Completed!</h2>
+      <p id="summaryWorkoutName" class="text-sm text-zinc-400 font-medium">Push Day</p>
+    </div>
+
+    <div class="grid grid-cols-3 gap-2.5 mt-6">
+      <div class="bg-[#18181B] border border-[#27272A] rounded-2xl p-3 text-center">
+        <div class="text-[9px] uppercase font-bold text-zinc-500">Duration</div>
+        <div id="summaryDuration" class="text-sm font-bold text-blue-400 font-mono mt-1">45m 12s</div>
+      </div>
+      <div class="bg-[#18181B] border border-[#27272A] rounded-2xl p-3 text-center">
+        <div class="text-[9px] uppercase font-bold text-zinc-500">Total Volume</div>
+        <div id="summaryVolume" class="text-sm font-bold text-emerald-400 font-mono mt-1">12,450 lbs</div>
+      </div>
+      <div class="bg-[#18181B] border border-[#27272A] rounded-2xl p-3 text-center">
+        <div class="text-[9px] uppercase font-bold text-zinc-500">Sets Done</div>
+        <div id="summarySets" class="text-sm font-bold text-amber-400 font-mono mt-1">15</div>
+      </div>
+    </div>
+
+    <div class="mt-5 bg-[#18181B] border border-amber-500/30 rounded-2xl p-4">
+      <div class="flex items-center gap-1.5 text-amber-400 font-bold text-xs uppercase tracking-wider mb-2">
+        <span>🔥</span> Personal Records Achieved
+      </div>
+      <div id="summaryPRList" class="space-y-2 text-xs">
+        <!-- PR items -->
+      </div>
+    </div>
+
+    <button onclick="closeSummaryModal()" class="w-full mt-6 py-3.5 bg-blue-500 active:bg-blue-400 text-black font-bold text-sm rounded-xl">
+      Done & Save
+    </button>
+  </div>
+
+  <script>
+    // MARK: - State & Data Layer (Synced with LocalStorage)
+    const STORAGE_KEY = 'ironpulse_data_v1';
+
+    let appState = {
+      tab: 'workout',
+      unit: 'lbs',
+      activeWorkout: null,
+      workoutSeconds: 0,
+      restSeconds: 0,
+      totalRestSeconds: 90,
+      exercises: [
+        { id: 1, name: "Barbell Bench Press", muscle: "Chest", equipment: "Barbell", pr: 225 },
+        { id: 2, name: "Incline Barbell Bench Press", muscle: "Chest", equipment: "Barbell", pr: 185 },
+        { id: 3, name: "Dumbbell Bench Press", muscle: "Chest", equipment: "Dumbbell", pr: 85 },
+        { id: 4, name: "Cable Chest Flyes", muscle: "Chest", equipment: "Cable", pr: 35 },
+        { id: 5, name: "Barbell Deadlift", muscle: "Back", equipment: "Barbell", pr: 385 },
+        { id: 6, name: "Pull-Ups", muscle: "Back", equipment: "Bodyweight", pr: 45 },
+        { id: 7, name: "Barbell Bent-Over Row", muscle: "Back", equipment: "Barbell", pr: 205 },
+        { id: 8, name: "Lat Pulldown", muscle: "Back", equipment: "Cable", pr: 175 },
+        { id: 9, name: "Barbell Back Squat", muscle: "Legs", equipment: "Barbell", pr: 315 },
+        { id: 10, name: "Romanian Deadlift", muscle: "Legs", equipment: "Barbell", pr: 265 },
+        { id: 11, name: "Leg Press", muscle: "Legs", equipment: "Machine", pr: 540 },
+        { id: 12, name: "Standing Calf Raise", muscle: "Legs", equipment: "Machine", pr: 180 },
+        { id: 13, name: "Overhead Barbell Press", muscle: "Shoulders", equipment: "Barbell", pr: 145 },
+        { id: 14, name: "Dumbbell Lateral Raise", muscle: "Shoulders", equipment: "Dumbbell", pr: 35 },
+        { id: 15, name: "Barbell Bicep Curl", muscle: "Arms", equipment: "Barbell", pr: 95 },
+        { id: 16, name: "Triceps Rope Pushdown", muscle: "Arms", equipment: "Cable", pr: 80 }
+      ],
+      templates: [
+        {
+          id: 'push',
+          name: "Push Day (Chest, Shoulders, Triceps)",
+          exercises: ["Barbell Bench Press", "Incline Barbell Bench Press", "Overhead Barbell Press", "Dumbbell Lateral Raise", "Triceps Rope Pushdown"]
+        },
+        {
+          id: 'pull',
+          name: "Pull Day (Back & Biceps)",
+          exercises: ["Barbell Deadlift", "Pull-Ups", "Barbell Bent-Over Row", "Lat Pulldown", "Barbell Bicep Curl"]
+        },
+        {
+          id: 'legs',
+          name: "Legs Day (Quads, Hamstrings)",
+          exercises: ["Barbell Back Squat", "Romanian Deadlift", "Leg Press", "Standing Calf Raise"]
+        }
+      ],
+      history: [
+        { id: 1, name: "Push Day", date: "Yesterday", duration: "48m 10s", volume: 14250, sets: 15 },
+        { id: 2, name: "Pull Day", date: "3 days ago", duration: "52m 30s", volume: 16800, sets: 18 },
+        { id: 3, name: "Legs Day", date: "5 days ago", duration: "58m 00s", volume: 19400, sets: 16 }
+      ]
+    };
+
+    // Load persisted state if exists
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        appState.history = parsed.history || appState.history;
+        appState.unit = parsed.unit || 'lbs';
+      }
+    } catch(e) {}
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          history: appState.history,
+          unit: appState.unit
+        }));
+      } catch(e) {}
+    }
+
+    // Haptic Feedback for Mobile
+    function triggerHaptic(type = 'light') {
+      if (navigator.vibrate) {
+        if (type === 'light') navigator.vibrate(15);
+        else if (type === 'medium') navigator.vibrate(30);
+        else if (type === 'success') navigator.vibrate([40, 40, 60]);
+      }
+    }
+
+    // Tab Navigation
+    function switchTab(tab) {
+      triggerHaptic('light');
+      appState.tab = tab;
+      ['workout', 'history', 'exercises', 'progress'].forEach(t => {
+        const btn = document.getElementById(`nav-${t}`);
+        if (t === tab) {
+          btn.className = "flex flex-col items-center gap-0.5 text-blue-500 flex-1 py-1";
+        } else {
+          btn.className = "flex flex-col items-center gap-0.5 text-zinc-500 flex-1 py-1";
+        }
+      });
+      renderCurrentTab();
+    }
+
+    function toggleWeightUnit() {
+      triggerHaptic('light');
+      appState.unit = appState.unit === 'lbs' ? 'kg' : 'lbs';
+      document.getElementById('unitToggleBtn').innerText = appState.unit.toUpperCase();
+      saveState();
+      renderCurrentTab();
+    }
+
+    // Render Tabs
+    function renderCurrentTab() {
+      const main = document.getElementById('appContainer');
+
+      if (appState.tab === 'workout') {
+        main.innerHTML = `
+          <div class="space-y-5">
+            <!-- Start Empty Workout Card -->
+            <button onclick="startEmptyWorkout()" class="w-full p-4 bg-[#18181B] active:bg-[#202024] border border-blue-500/30 rounded-2xl flex items-center gap-4 text-left shadow-lg">
+              <div class="w-12 h-12 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400 text-2xl font-bold">
+                +
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-white">Start Empty Workout</h3>
+                <p class="text-[11px] text-zinc-400 font-medium">Log on the fly without a saved template</p>
+              </div>
+            </button>
+
+            <!-- Routine Templates -->
+            <div>
+              <div class="flex items-center justify-between mb-3 px-1">
+                <span class="text-[11px] uppercase font-bold text-zinc-400 tracking-wider">Routines & Templates</span>
+              </div>
+              <div class="space-y-3">
+                ${appState.templates.map(tmpl => `
+                  <div class="p-4 bg-[#18181B] border border-[#27272A] rounded-2xl space-y-3">
+                    <div class="flex items-center justify-between">
+                      <h4 class="text-sm font-bold text-white">${tmpl.name}</h4>
+                      <span class="text-[10px] text-zinc-500 font-mono font-bold">${tmpl.exercises.length} Ex</span>
+                    </div>
+                    <div class="text-[11px] text-zinc-400 truncate">
+                      ${tmpl.exercises.join(' • ')}
+                    </div>
+                    <button onclick="startRoutine('${tmpl.id}')" class="w-full py-2.5 bg-blue-500 active:bg-blue-400 text-black text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/20">
+                      ▶ Start Routine
+                    </button>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (appState.tab === 'history') {
+        main.innerHTML = `
+          <div class="space-y-3">
+            <h2 class="text-base font-bold text-zinc-300 px-1">Workout History</h2>
+            ${appState.history.map(h => `
+              <div class="p-4 bg-[#18181B] border border-[#27272A] rounded-2xl space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-sm font-bold text-white">${h.name}</span>
+                  <span class="text-[11px] text-zinc-400">${h.date}</span>
+                </div>
+                <div class="flex items-center gap-4 text-xs font-mono text-zinc-400">
+                  <span class="text-blue-400">⏱ ${h.duration}</span>
+                  <span class="text-emerald-400">⚡ ${h.volume.toLocaleString()} ${appState.unit}</span>
+                  <span class="text-amber-400">✓ ${h.sets} sets</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      } else if (appState.tab === 'exercises') {
+        main.innerHTML = `
+          <div class="space-y-3">
+            <div class="flex items-center justify-between px-1">
+              <h2 class="text-base font-bold text-zinc-300">Exercise Library</h2>
+              <span class="text-xs text-zinc-500 font-mono">${appState.exercises.length} Movements</span>
+            </div>
+            <div class="space-y-2">
+              ${appState.exercises.map(ex => `
+                <div class="p-3 bg-[#18181B] border border-[#27272A] rounded-xl flex items-center justify-between">
+                  <div>
+                    <div class="text-xs font-bold text-white">${ex.name}</div>
+                    <div class="text-[10px] text-zinc-400">${ex.muscle} • ${ex.equipment}</div>
+                  </div>
+                  <div class="text-right">
+                    <span class="text-[9px] font-bold text-amber-400 block">PR</span>
+                    <span class="text-xs font-bold font-mono text-zinc-200">${ex.pr ? `${ex.pr} ${appState.unit}` : '—'}</span>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      } else if (appState.tab === 'progress') {
+        main.innerHTML = `
+          <div class="space-y-4">
+            <h2 class="text-base font-bold text-zinc-300 px-1">Analytics & Consistency</h2>
+            <div class="grid grid-cols-3 gap-2">
+              <div class="bg-[#18181B] border border-[#27272A] rounded-xl p-3 text-center">
+                <span class="text-[9px] uppercase font-bold text-zinc-500">Workouts</span>
+                <div class="text-base font-black text-blue-400 mt-1">${appState.history.length}</div>
+              </div>
+              <div class="bg-[#18181B] border border-[#27272A] rounded-xl p-3 text-center">
+                <span class="text-[9px] uppercase font-bold text-zinc-500">Streak</span>
+                <div class="text-base font-black text-amber-400 mt-1">4 Wks</div>
+              </div>
+              <div class="bg-[#18181B] border border-[#27272A] rounded-xl p-3 text-center">
+                <span class="text-[9px] uppercase font-bold text-zinc-500">Volume</span>
+                <div class="text-base font-black text-emerald-400 font-mono mt-1">164k</div>
+              </div>
+            </div>
+
+            <!-- Swift Charts Simulation -->
+            <div class="bg-[#18181B] border border-[#27272A] rounded-2xl p-4 space-y-2">
+              <div class="flex items-center justify-between text-xs">
+                <span class="font-bold text-zinc-300">WEEKLY WORKOUT FREQUENCY</span>
+                <span class="text-[10px] text-blue-400 font-bold">3.8 avg/wk</span>
+              </div>
+              <div class="h-28 flex items-end justify-between pt-4 px-2 border-b border-[#27272A] gap-2">
+                <div class="w-full flex flex-col items-center gap-1">
+                  <div class="w-full bg-blue-500/80 rounded-t h-[60%]"></div>
+                  <span class="text-[9px] text-zinc-500">W1</span>
+                </div>
+                <div class="w-full flex flex-col items-center gap-1">
+                  <div class="w-full bg-blue-500/80 rounded-t h-[80%]"></div>
+                  <span class="text-[9px] text-zinc-500">W2</span>
+                </div>
+                <div class="w-full flex flex-col items-center gap-1">
+                  <div class="w-full bg-blue-500/80 rounded-t h-[70%]"></div>
+                  <span class="text-[9px] text-zinc-500">W3</span>
+                </div>
+                <div class="w-full flex flex-col items-center gap-1">
+                  <div class="w-full bg-blue-500 rounded-t h-[95%] shadow-lg shadow-blue-500/30"></div>
+                  <span class="text-[9px] text-blue-400 font-bold">W4</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    // Active Workout Operations
+    let workoutTimerInterval = null;
+    let restTimerInterval = null;
+
+    function startEmptyWorkout() {
+      triggerHaptic('medium');
+      appState.activeWorkout = {
+        name: "Quick Workout",
+        exercises: [
+          {
+            name: "Barbell Bench Press",
+            sets: [
+              { num: 1, weight: 135, reps: 10, done: false },
+              { num: 2, weight: 185, reps: 8, done: false },
+              { num: 3, weight: 225, reps: 5, done: false }
+            ]
+          }
+        ]
+      };
+      openActiveWorkout();
+    }
+
+    function startRoutine(id) {
+      triggerHaptic('medium');
+      const tmpl = appState.templates.find(t => t.id === id);
+      if (!tmpl) return;
+      appState.activeWorkout = {
+        name: tmpl.name,
+        exercises: tmpl.exercises.map(name => ({
+          name: name,
+          sets: [
+            { num: 1, weight: 135, reps: 10, done: false },
+            { num: 2, weight: 185, reps: 8, done: false },
+            { num: 3, weight: 205, reps: 6, done: false }
+          ]
+        }))
+      };
+      openActiveWorkout();
+    }
+
+    function openActiveWorkout() {
+      appState.workoutSeconds = 0;
+      clearInterval(workoutTimerInterval);
+      workoutTimerInterval = setInterval(() => {
+        appState.workoutSeconds++;
+        updateWorkoutTimers();
+      }, 1000);
+
+      document.getElementById('activeModalTitle').innerText = appState.activeWorkout.name;
+      document.getElementById('floatingWorkoutTitle').innerText = appState.activeWorkout.name;
+
+      renderActiveWorkoutRows();
+      document.getElementById('activeWorkoutModal').classList.remove('hidden');
+      document.getElementById('floatingActiveBar').classList.add('hidden');
+    }
+
+    function updateWorkoutTimers() {
+      const mins = Math.floor(appState.workoutSeconds / 60);
+      const secs = appState.workoutSeconds % 60;
+      const fmt = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+      document.getElementById('activeModalDuration').innerText = `00:${fmt}`;
+      document.getElementById('floatingWorkoutTimer').innerText = fmt;
+    }
+
+    function renderActiveWorkoutRows() {
+      const container = document.getElementById('activeWorkoutBody');
+      if (!appState.activeWorkout) return;
+
+      container.innerHTML = appState.activeWorkout.exercises.map((ex, exIdx) => `
+        <div class="bg-[#18181B] border border-[#27272A] rounded-2xl p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <h4 class="text-sm font-bold text-white">${ex.name}</h4>
+            <button onclick="addSet(${exIdx})" class="text-xs text-blue-400 font-bold active:scale-95">+ Add Set</button>
+          </div>
+
+          <div class="grid grid-cols-12 gap-2 text-[10px] font-bold text-zinc-500 uppercase px-1">
+            <span class="col-span-2">Set</span>
+            <span class="col-span-4 text-center">${appState.unit.toUpperCase()}</span>
+            <span class="col-span-3 text-center">Reps</span>
+            <span class="col-span-3 text-right">Done</span>
+          </div>
+
+          <div class="space-y-2">
+            ${ex.sets.map((set, setIdx) => `
+              <div class="grid grid-cols-12 gap-2 items-center p-1.5 rounded-xl ${set.done ? 'bg-emerald-500/10' : 'bg-[#202024]'}">
+                <div class="col-span-2">
+                  <span class="w-6 h-6 rounded-md bg-[#27272A] text-zinc-300 font-bold text-xs flex items-center justify-center">${set.num}</span>
+                </div>
+                <div class="col-span-4">
+                  <input type="number" value="${set.weight}" onchange="updateWeight(${exIdx}, ${setIdx}, this.value)" class="w-full text-center bg-[#27272A] text-white font-mono text-xs font-bold rounded-lg py-2 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                </div>
+                <div class="col-span-3">
+                  <input type="number" value="${set.reps}" onchange="updateReps(${exIdx}, ${setIdx}, this.value)" class="w-full text-center bg-[#27272A] text-white font-mono text-xs font-bold rounded-lg py-2 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                </div>
+                <div class="col-span-3 text-right">
+                  <button onclick="toggleSet(${exIdx}, ${setIdx})" class="w-8 h-8 rounded-lg font-bold text-xs inline-flex items-center justify-center transition-all ${set.done ? 'bg-emerald-500 text-black shadow-md shadow-emerald-500/20' : 'bg-[#27272A] text-zinc-400'}">
+                    ✓
+                  </button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function toggleSet(exIdx, setIdx) {
+      triggerHaptic('medium');
+      const set = appState.activeWorkout.exercises[exIdx].sets[setIdx];
+      set.done = !set.done;
+      renderActiveWorkoutRows();
+      if (set.done) {
+        startRestTimer(90);
+      }
+    }
+
+    function updateWeight(exIdx, setIdx, val) {
+      appState.activeWorkout.exercises[exIdx].sets[setIdx].weight = parseFloat(val) || 0;
+    }
+
+    function updateReps(exIdx, setIdx, val) {
+      appState.activeWorkout.exercises[exIdx].sets[setIdx].reps = parseInt(val) || 0;
+    }
+
+    function addSet(exIdx) {
+      triggerHaptic('light');
+      const sets = appState.activeWorkout.exercises[exIdx].sets;
+      const last = sets[sets.length - 1];
+      sets.push({
+        num: sets.length + 1,
+        weight: last ? last.weight : 135,
+        reps: last ? last.reps : 10,
+        done: false
+      });
+      renderActiveWorkoutRows();
+    }
+
+    // Rest Timer
+    function startRestTimer(seconds) {
+      clearInterval(restTimerInterval);
+      appState.totalRestSeconds = seconds;
+      appState.restSeconds = seconds;
+      document.getElementById('restTimerOverlay').classList.remove('hidden');
+      document.getElementById('floatingRestTimerLabel').classList.remove('hidden');
+      document.getElementById('floatingRestTimerLabel').classList.add('flex');
+
+      updateRestTimerDisplay();
+      restTimerInterval = setInterval(() => {
+        if (appState.restSeconds > 1) {
+          appState.restSeconds--;
+          updateRestTimerDisplay();
+        } else {
+          finishRestTimer();
+        }
+      }, 1000);
+    }
+
+    function updateRestTimerDisplay() {
+      const mins = Math.floor(appState.restSeconds / 60);
+      const secs = appState.restSeconds % 60;
+      const fmt = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+      document.getElementById('restCountdownText').innerText = fmt;
+      document.getElementById('floatingRestSecs').innerText = `${appState.restSeconds}s`;
+
+      const pct = (appState.restSeconds / appState.totalRestSeconds) * 100;
+      document.getElementById('restCircleProgress').setAttribute('stroke-dasharray', `${pct}, 100`);
+    }
+
+    function adjustRestTimer(delta) {
+      triggerHaptic('light');
+      appState.restSeconds = Math.max(0, appState.restSeconds + delta);
+      appState.totalRestSeconds = Math.max(appState.restSeconds, appState.totalRestSeconds + (delta > 0 ? delta : 0));
+      updateRestTimerDisplay();
+      if (appState.restSeconds <= 0) finishRestTimer();
+    }
+
+    function skipRestTimer() {
+      triggerHaptic('light');
+      finishRestTimer();
+    }
+
+    function finishRestTimer() {
+      clearInterval(restTimerInterval);
+      triggerHaptic('success');
+      document.getElementById('restTimerOverlay').classList.add('hidden');
+      document.getElementById('floatingRestTimerLabel').classList.add('hidden');
+    }
+
+    // Minimize / Maximize
+    function minimizeActiveWorkout() {
+      triggerHaptic('light');
+      document.getElementById('activeWorkoutModal').classList.add('hidden');
+      document.getElementById('floatingActiveBar').classList.remove('hidden');
+    }
+
+    function maximizeActiveWorkout() {
+      triggerHaptic('light');
+      document.getElementById('activeWorkoutModal').classList.remove('hidden');
+      document.getElementById('floatingActiveBar').classList.add('hidden');
+    }
+
+    // Finish Workout & PRs
+    function finishActiveWorkout() {
+      triggerHaptic('success');
+      clearInterval(workoutTimerInterval);
+      finishRestTimer();
+
+      let totalVol = 0;
+      let totalSets = 0;
+      let prs = [];
+
+      appState.activeWorkout.exercises.forEach(ex => {
+        ex.sets.forEach(s => {
+          if (s.done) {
+            totalSets++;
+            totalVol += (s.weight * s.reps);
+            if (s.weight >= 225) {
+              prs.push({ name: ex.name, val: `${s.weight} ${appState.unit}` });
+            }
+          }
+        });
+      });
+
+      const mins = Math.floor(appState.workoutSeconds / 60);
+      const secs = appState.workoutSeconds % 60;
+
+      document.getElementById('summaryWorkoutName').innerText = appState.activeWorkout.name;
+      document.getElementById('summaryDuration').innerText = `${mins}m ${secs}s`;
+      document.getElementById('summaryVolume').innerText = `${totalVol.toLocaleString()} ${appState.unit}`;
+      document.getElementById('summarySets').innerText = totalSets;
+
+      const prContainer = document.getElementById('summaryPRList');
+      if (prs.length > 0) {
+        prContainer.innerHTML = prs.map(p => `
+          <div class="flex items-center justify-between p-2 rounded-lg bg-[#202024]">
+            <span class="font-bold text-white">${p.name}</span>
+            <span class="font-bold text-amber-400 font-mono">${p.val}</span>
+          </div>
+        `).join('');
+      } else {
+        prContainer.innerHTML = `<div class="text-zinc-400 text-center py-2">Consistent work! Great workout.</div>`;
+      }
+
+      appState.history.unshift({
+        id: Date.now(),
+        name: appState.activeWorkout.name,
+        date: "Just now",
+        duration: `${mins}m ${secs}s`,
+        volume: totalVol,
+        sets: totalSets
+      });
+      saveState();
+
+      document.getElementById('activeWorkoutModal').classList.add('hidden');
+      document.getElementById('floatingActiveBar').classList.add('hidden');
+      document.getElementById('summaryModal').classList.remove('hidden');
+      appState.activeWorkout = null;
+    }
+
+    function closeSummaryModal() {
+      triggerHaptic('light');
+      document.getElementById('summaryModal').classList.add('hidden');
+      switchTab('history');
+    }
+
+    // Initial load
+    renderCurrentTab();
+  </script>
+</body>
+</html>

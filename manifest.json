@@ -1,0 +1,17 @@
+{
+  "name": "IronPulse - Workout Tracker",
+  "short_name": "IronPulse",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0A0A0C",
+  "theme_color": "#0A0A0C",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='128' fill='%230A0A0C'/%3E%3Ccircle cx='256' cy='256' r='180' fill='%2318181B' stroke='%233B82F6' stroke-width='16'/%3E%3Cpath d='M160 256h192M190 200v112M322 200v112' stroke='%233B82F6' stroke-width='28' stroke-linecap='round'/%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
